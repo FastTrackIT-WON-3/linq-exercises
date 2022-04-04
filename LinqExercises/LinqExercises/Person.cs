@@ -78,6 +78,9 @@ namespace LinqExercises
                 : $"{FullName} date of birth: {DateOfBirth}, age: {Age}");
         }
 
-        
+        public Person Clone()
+        {
+            return new Person(FirstName, LastName, DateOfBirth, Gender);
+        }
     }
 }

@@ -9,15 +9,40 @@ namespace LinqExercises
     {
         static void Main(string[] args)
         {
-            int[] numbers = { 1, 2, 3 };
-            string[] labels = { "label", "test", "hello", "another" };
-            var query = numbers.Zip(labels, (elem1, elem2) => $"{elem2}{elem1}");
+            /*
+            var query = from product in ProductsDatabase.AllProducts
+                        join category in ProductsDatabase.AllCategories on product.CategoryId equals category.Id into categoriesGroup
+                        from catOrDefault in categoriesGroup.DefaultIfEmpty(new Category(-1, "N/A"))
+                        select new
+                        {
+                            Product = product,
+                            Category = catOrDefault
+                        };
+            */
 
-            foreach (var element in query)
+            var query = ProductsDatabase.AllProducts
+                .GroupJoin(
+                    ProductsDatabase.AllCategories,
+                    product => product.CategoryId,
+                    category => category.Id,
+                    (product, categories) => new
+                    {
+                        Product = product,
+                        Categories = categories
+                    })
+                .SelectMany(
+                    groupJoin => groupJoin.Categories.DefaultIfEmpty(new Category(-1, "N/A")),
+                    (groupJoin, category) => new
+                    {
+                        Product = groupJoin.Product,
+                        Category = category
+                    });
+
+
+            foreach (var pair in query)
             {
-                Console.Write($"{element}, ");
+                Console.WriteLine($"{pair.Product.Id}) {pair.Product.Name}, category: {pair.Category.Name}");
             }
-
         }
 
         private static void PrintSeparator(string label)
@@ -389,6 +414,258 @@ namespace LinqExercises
             foreach (var element in query)
             {
                 Console.Write($"{element}, ");
+            }
+        }
+
+        private static void AggregateFunctions_Count_Example()
+        {
+            /*
+            int[] array = new[] { 1, 2, 3, 4 };
+            Console.WriteLine(array.Length);
+
+            List<string> genericList = new List<string>();
+            genericList.Add("test1");
+            genericList.Add("test2");
+            genericList.AddRange(new[] { "test3", "test4" });
+            Console.WriteLine(genericList.Count);
+
+
+            int nrOfPersons = PersonsDatabase.AllPersons.Count();
+            Console.WriteLine(nrOfPersons);
+            */
+
+            int nrOfPersons = PersonsDatabase.AllPersons.Count(
+                person => person.LastName.StartsWith("D", StringComparison.OrdinalIgnoreCase));
+
+            Console.WriteLine(nrOfPersons);
+        }
+
+        private static void AggregateFunctions_Min_Example()
+        {
+            int[] array = { 5, 4, 3, 2, 1 };
+            int min = array.Min();
+
+            Console.WriteLine(min);
+
+
+            int minAge = PersonsDatabase.AllPersons.Min(person => person.Age);
+            var query = PersonsDatabase.AllPersons.Where(person => person.Age == minAge);
+
+            Console.WriteLine($"Min age={minAge}");
+            foreach (var person in query)
+            {
+                person.Print();
+            }
+        }
+
+        private static void AggregateFunctions_Average_Example()
+        {
+            int[] array = { 5, 4, 3, 2, 1 };
+            double avg = array.Average();
+            Console.WriteLine(avg);
+
+
+            double avgAge = PersonsDatabase.AllPersons.Average(person => person.Age);
+            var query = PersonsDatabase.AllPersons.Where(person => person.Age == avgAge);
+            Console.WriteLine($"Avg age={avgAge}");
+            foreach (var person in query)
+            {
+                person.Print();
+            }
+        }
+
+        private static void ElementFunctions_First_Example()
+        {
+            int[] array = { 5, 4, 3, 2, 1 };
+            int first = array.First(nr => nr % 2 == 0);
+
+            // But those will throw!!!
+            // int[] array = { 5, 3, 1 };
+            // int first = array.First(nr => nr % 2 == 0);
+
+            //int[] array = { };
+            //int first = array.First();
+
+            Console.WriteLine($"First nr={first}");
+
+            Person p = PersonsDatabase.AllPersons.First(person => person.LastName.StartsWith("M", StringComparison.OrdinalIgnoreCase));
+            // But this will throw!!!
+            // Person p = PersonsDatabase.AllPersons.First(person => person.LastName.StartsWith("Q", StringComparison.OrdinalIgnoreCase));
+            p.Print();
+        }
+
+        private static void ElementFunctions_FirstOrDefault_Example()
+        {
+            int[] array = { 5, 3, 1, 0 };
+            int first = array.FirstOrDefault(nr => nr % 2 == 0);
+            Console.WriteLine($"First nr={first}");
+
+            Person p = PersonsDatabase.AllPersons.FirstOrDefault(person => person.LastName.StartsWith("M", StringComparison.OrdinalIgnoreCase));
+            if (p is not null)
+            {
+                p.Print();
+            }
+            else
+            {
+                Console.Write("No person matched!");
+            }
+        }
+
+        private static void ElementFunctions_SingleOrDefault_Example()
+        {
+            int[] array = { 5, 4, 3 };
+            int singleValue = array.SingleOrDefault(nr => nr % 2 == 0);
+            Console.WriteLine($"First nr={singleValue}");
+
+            // if multiple persons => will throw!
+            Person p = PersonsDatabase.AllPersons.SingleOrDefault(person => person.Age == 45);
+            if (p is not null)
+            {
+                p.Print();
+            }
+            else
+            {
+                Console.WriteLine("No matching person of 45 years");
+            }
+        }
+
+        private static void ElementFunctions_ElementAtOrDefault_Example()
+        {
+            int[] array = { 5, 4, 3 };
+            int value = array.ElementAtOrDefault(10);
+            Console.WriteLine(value);
+        }
+
+        private static void QuantifierFunctions_Any_Example()
+        {
+            int[] array = { 5, 3, 1 };
+            bool atLeastOne = array.Any(nr => nr % 2 == 0);
+            Console.WriteLine(atLeastOne);
+
+            bool anyPerson = PersonsDatabase.AllPersons.Any(person => person.Age == 45);
+            if (anyPerson)
+            {
+                Person p = PersonsDatabase.AllPersons.First(person => person.Age == 45);
+                p.Print();
+            }
+            else
+            {
+                Console.WriteLine("No person of 45 years");
+            }
+        }
+
+        private static void QuantifierFunctions_All_Example()
+        {
+            bool allPersons = PersonsDatabase.AllPersons.All(person => person.Gender == Gender.Female);
+            if (allPersons)
+            {
+                Console.WriteLine("All persons are female");
+            }
+            else
+            {
+                Console.WriteLine("Not all persons are female");
+            }
+        }
+
+        private static void QuantifierFunctions_Contains_Example()
+        {
+            int[] array = { 1, 2, 3, 4 };
+            bool containsNr = array.Contains(3);
+            Console.WriteLine(containsNr);
+
+            Person p = PersonsDatabase.AllPersons.First();
+            bool containsPerson = PersonsDatabase.AllPersons.Contains(p);
+            Console.WriteLine(containsPerson);
+
+            Person clone = p.Clone();
+            bool containsClone = PersonsDatabase.AllPersons.Contains(clone);
+            Console.WriteLine(containsClone);
+        }
+
+        private static void QuantifierFunctions_ContainsWithComparer_Example()
+        {
+            int[] array = { 1, 2, 3, 4 };
+            bool containsNr = array.Contains(3);
+            Console.WriteLine(containsNr);
+
+            Person p = PersonsDatabase.AllPersons.First();
+            bool containsPerson = PersonsDatabase.AllPersons.Contains(p);
+            Console.WriteLine(containsPerson);
+
+            Person clone = p.Clone();
+            bool containsClone = PersonsDatabase.AllPersons.Contains(
+                clone,
+                new LambdaEqualityComparer<Person>(
+                    (x, y) => (x is not null) &&
+                              (y is not null) &&
+                              string.Equals(x.FirstName, y.FirstName, StringComparison.OrdinalIgnoreCase) &&
+                              string.Equals(x.LastName, y.LastName, StringComparison.OrdinalIgnoreCase) &&
+                              x.Gender == y.Gender &&
+                              x.DateOfBirth == y.DateOfBirth));
+
+            Console.WriteLine(containsClone);
+        }
+
+        private static void Joins_Simple_Example()
+        {
+            /*
+            var query = from product in ProductsDatabase.AllProducts
+                        join category in ProductsDatabase.AllCategories on product.CategoryId equals category.Id
+                        select new
+                        {
+                            Product = product,
+                            Category = category
+                        };
+            */
+
+            var query = ProductsDatabase.AllProducts
+                .Join(
+                    ProductsDatabase.AllCategories,
+                    product => product.CategoryId,
+                    category => category.Id,
+                    (product, category) => new
+                    {
+                        Product = product,
+                        Category = category
+                    });
+
+            foreach (var pair in query)
+            {
+                Console.WriteLine($"{pair.Product.Id}) {pair.Product.Name}, category: {pair.Category.Name}");
+            }
+        }
+
+        private static void Joins_GroupJoin_Example()
+        {
+            /*
+            var query = from category in ProductsDatabase.AllCategories
+                        join product in ProductsDatabase.AllProducts on category.Id equals product.CategoryId into categoryGroup
+                        select new
+                        {
+                            Id = category.Id,
+                            CategoryName = category.Name,
+                            Products = categoryGroup
+                        };
+            */
+
+            var query = ProductsDatabase.AllCategories.GroupJoin(
+                ProductsDatabase.AllProducts,
+                category => category.Id,
+                product => product.CategoryId,
+                (category, categoryGroup) => new
+                {
+                    Id = category.Id,
+                    CategoryName = category.Name,
+                    Products = categoryGroup
+                });
+
+            foreach (var group in query)
+            {
+                Console.WriteLine($"{group.Id}) {group.CategoryName}");
+                foreach (var product in group.Products)
+                {
+                    Console.WriteLine($"    - {product.Id}) {product.Name}");
+                }
             }
         }
     }
